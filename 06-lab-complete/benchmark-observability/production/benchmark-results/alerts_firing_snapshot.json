@@ -1,0 +1,315 @@
+{
+  "captured_at": "2026-11-25T13:12:06.691235+00:00",
+  "queries": {
+    "rps_by_instance": {
+      "expression": "sum by (instance) (rate(http_requests_total{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "instance": "172.20.0.5:8000"
+              },
+              "value": [
+                1795612326.699,
+                "7.472727272727272"
+              ]
+            },
+            {
+              "metric": {
+                "instance": "172.20.0.8:8000"
+              },
+              "value": [
+                1795612326.699,
+                "7.6"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "p95_seconds": {
+      "expression": "histogram_quantile(0.95,sum by (le)(rate(http_request_duration_seconds_bucket{job=\"agent\",route=\"/ask\"}[1m])))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612326.706,
+                "1.8974009900990099"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "avg_seconds": {
+      "expression": "sum(rate(http_request_duration_seconds_sum{job=\"agent\",route=\"/ask\"}[1m]))/sum(rate(http_request_duration_seconds_count{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612326.726,
+                "0.5971770220434351"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "error_rate": {
+      "expression": "sum(rate(http_requests_total{job=\"agent\",route=\"/ask\",status=~\"5..\"}[1m]))/sum(rate(http_requests_total{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612326.734,
+                "0.2074788902291918"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "tokens_per_second": {
+      "expression": "sum by (type)(rate(llm_tokens_total{job=\"agent\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "type": "input"
+              },
+              "value": [
+                1795612326.741,
+                "923.5272727272727"
+              ]
+            },
+            {
+              "metric": {
+                "type": "output"
+              },
+              "value": [
+                1795612326.741,
+                "482.94545454545454"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "cost_usd_per_hour": {
+      "expression": "sum(rate(llm_cost_usd_total{job=\"agent\"}[5m]))*3600",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612326.749,
+                "1.5839096949152836"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "agent_versions": {
+      "expression": "agent_info{job=\"agent\"}",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "__name__": "agent_info",
+                "instance": "172.20.0.5:8000",
+                "job": "agent",
+                "model": "mock-llm-small",
+                "version": "v2"
+              },
+              "value": [
+                1795612326.755,
+                "1"
+              ]
+            },
+            {
+              "metric": {
+                "__name__": "agent_info",
+                "instance": "172.20.0.8:8000",
+                "job": "agent",
+                "model": "mock-llm-small",
+                "version": "v2"
+              },
+              "value": [
+                1795612326.755,
+                "1"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "retrieval_per_second": {
+      "expression": "sum(rate(agent_retrieval_total{job=\"agent\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612326.764,
+                "15.145454545454545"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "targets": {
+    "status": "success",
+    "data": {
+      "activeTargets": [
+        {
+          "discoveredLabels": {
+            "__address__": "172.20.0.5:8000",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__meta_dns_name": "agent",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "agent"
+          },
+          "labels": {
+            "instance": "172.20.0.5:8000",
+            "job": "agent"
+          },
+          "scrapePool": "agent",
+          "scrapeUrl": "http://172.20.0.5:8000/metrics",
+          "globalUrl": "http://172.20.0.5:8000/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:12:05.523670294Z",
+          "lastScrapeDuration": 0.0116619,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "172.20.0.8:8000",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__meta_dns_name": "agent",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "agent"
+          },
+          "labels": {
+            "instance": "172.20.0.8:8000",
+            "job": "agent"
+          },
+          "scrapePool": "agent",
+          "scrapeUrl": "http://172.20.0.8:8000/metrics",
+          "globalUrl": "http://172.20.0.8:8000/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:12:03.2658173Z",
+          "lastScrapeDuration": 0.0032356,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "localhost:9090",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "prometheus"
+          },
+          "labels": {
+            "instance": "localhost:9090",
+            "job": "prometheus"
+          },
+          "scrapePool": "prometheus",
+          "scrapeUrl": "http://localhost:9090/metrics",
+          "globalUrl": "http://a35d0146d1cb:9090/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:12:02.690628308Z",
+          "lastScrapeDuration": 0.0112591,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        }
+      ],
+      "droppedTargets": [],
+      "droppedTargetCounts": {
+        "agent": 0,
+        "prometheus": 0
+      }
+    }
+  },
+  "alerts": {
+    "status": "success",
+    "data": {
+      "alerts": [
+        {
+          "labels": {
+            "alertname": "AgentHighErrorRate",
+            "severity": "critical"
+          },
+          "annotations": {
+            "description": "Error rate hiện tại: 20.7% (SLO: < 5%)",
+            "summary": "Error rate /ask vượt 5%"
+          },
+          "state": "firing",
+          "activeAt": "2026-11-25T13:08:22.401817116Z",
+          "value": "2.069795427196149e-01"
+        },
+        {
+          "labels": {
+            "alertname": "AgentHighLatencyP95",
+            "severity": "warning"
+          },
+          "annotations": {
+            "description": "p95 hiện tại: 1.897s (SLO: < 1s)",
+            "summary": "p95 latency /ask vượt 1 giây"
+          },
+          "state": "firing",
+          "activeAt": "2026-11-25T13:10:02.401817116Z",
+          "value": "1.8971534653465345e+00"
+        }
+      ]
+    }
+  }
+}

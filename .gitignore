@@ -37,3 +37,12 @@ volumes/
 
 # Raw local benchmark server logs; keep JSON reports and command output logs.
 06-lab-complete/benchmark-observability/develop/reports/agent_*.log
+
+# Discarded CP8 preflight run with an uncontrolled replica count.
+06-lab-complete/benchmark-observability/production/benchmark-results/preflight_*
+
+# Optional generated console logs and Locust auxiliary exports.
+06-lab-complete/benchmark-observability/develop/reports/*.log
+06-lab-complete/benchmark-observability/production/benchmark-results/*_exceptions.csv
+06-lab-complete/benchmark-observability/production/benchmark-results/*_failures.csv
+06-lab-complete/benchmark-observability/production/benchmark-results/*_stats_history.csv

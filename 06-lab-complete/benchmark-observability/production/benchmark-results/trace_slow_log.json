@@ -1,0 +1,16 @@
+{
+  "ts": "2026-11-25T13:11:42.389236+00:00",
+  "level": "INFO",
+  "service": "observable-agent",
+  "instance": "55864082354f",
+  "event": "llm_call",
+  "trace_id": "5b759e26f97e23a2b5bc72c6140589ff",
+  "span_id": "c3acbcbb9981f363",
+  "request_id": "5dfa769086a4",
+  "model": "mock-llm-small",
+  "agent_version": "v2",
+  "input_tokens": 95,
+  "output_tokens": 55,
+  "cost_usd": 4.7e-05,
+  "llm_ms": 1681.1
+}

@@ -1,0 +1,11 @@
+{
+  "ts": "2026-11-25T13:11:56.979042+00:00",
+  "level": "INFO",
+  "service": "observable-agent",
+  "instance": "b4a70b35d692",
+  "event": "llm_error",
+  "trace_id": "f90c08398270acd34187636f0156dc36",
+  "span_id": "ce428934cc1395af",
+  "request_id": "f60adad7ae43",
+  "error": "Upstream LLM error: 503 Service Unavailable (mock)"
+}

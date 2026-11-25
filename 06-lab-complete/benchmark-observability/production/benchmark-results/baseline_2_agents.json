@@ -1,0 +1,302 @@
+{
+  "captured_at": "2026-11-25T13:07:58.188955+00:00",
+  "queries": {
+    "rps_by_instance": {
+      "expression": "sum by (instance) (rate(http_requests_total{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "instance": "172.20.0.5:8000"
+              },
+              "value": [
+                1795612078.207,
+                "9.145454545454545"
+              ]
+            },
+            {
+              "metric": {
+                "instance": "172.20.0.8:8000"
+              },
+              "value": [
+                1795612078.207,
+                "9.163636363636362"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "p95_seconds": {
+      "expression": "histogram_quantile(0.95,sum by (le)(rate(http_request_duration_seconds_bucket{job=\"agent\",route=\"/ask\"}[1m])))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612078.212,
+                "0.29558908045977006"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "avg_seconds": {
+      "expression": "sum(rate(http_request_duration_seconds_sum{job=\"agent\",route=\"/ask\"}[1m]))/sum(rate(http_request_duration_seconds_count{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612078.217,
+                "0.2420231896782505"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "error_rate": {
+      "expression": "sum(rate(http_requests_total{job=\"agent\",route=\"/ask\",status=~\"5..\"}[1m]))/sum(rate(http_requests_total{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612078.222,
+                "0.015888778550148957"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "tokens_per_second": {
+      "expression": "sum by (type)(rate(llm_tokens_total{job=\"agent\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "type": "input"
+              },
+              "value": [
+                1795612078.226,
+                "1397.6181818181817"
+              ]
+            },
+            {
+              "metric": {
+                "type": "output"
+              },
+              "value": [
+                1795612078.226,
+                "729.3818181818181"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "cost_usd_per_hour": {
+      "expression": "sum(rate(llm_cost_usd_total{job=\"agent\"}[5m]))*3600",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612078.231,
+                "4.1259052376156715"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "agent_versions": {
+      "expression": "agent_info{job=\"agent\"}",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "__name__": "agent_info",
+                "instance": "172.20.0.5:8000",
+                "job": "agent",
+                "model": "mock-llm-small",
+                "version": "v2"
+              },
+              "value": [
+                1795612078.235,
+                "1"
+              ]
+            },
+            {
+              "metric": {
+                "__name__": "agent_info",
+                "instance": "172.20.0.8:8000",
+                "job": "agent",
+                "model": "mock-llm-small",
+                "version": "v2"
+              },
+              "value": [
+                1795612078.235,
+                "1"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "retrieval_per_second": {
+      "expression": "sum(rate(agent_retrieval_total{job=\"agent\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612078.24,
+                "18.272727272727273"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "targets": {
+    "status": "success",
+    "data": {
+      "activeTargets": [
+        {
+          "discoveredLabels": {
+            "__address__": "172.20.0.5:8000",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__meta_dns_name": "agent",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "agent"
+          },
+          "labels": {
+            "instance": "172.20.0.5:8000",
+            "job": "agent"
+          },
+          "scrapePool": "agent",
+          "scrapeUrl": "http://172.20.0.5:8000/metrics",
+          "globalUrl": "http://172.20.0.5:8000/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:07:55.523670294Z",
+          "lastScrapeDuration": 0.0030831,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "172.20.0.8:8000",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__meta_dns_name": "agent",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "agent"
+          },
+          "labels": {
+            "instance": "172.20.0.8:8000",
+            "job": "agent"
+          },
+          "scrapePool": "agent",
+          "scrapeUrl": "http://172.20.0.8:8000/metrics",
+          "globalUrl": "http://172.20.0.8:8000/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:07:53.2658173Z",
+          "lastScrapeDuration": 0.0036784,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "localhost:9090",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "prometheus"
+          },
+          "labels": {
+            "instance": "localhost:9090",
+            "job": "prometheus"
+          },
+          "scrapePool": "prometheus",
+          "scrapeUrl": "http://localhost:9090/metrics",
+          "globalUrl": "http://a35d0146d1cb:9090/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:07:57.690628308Z",
+          "lastScrapeDuration": 0.0048303,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        }
+      ],
+      "droppedTargets": [],
+      "droppedTargetCounts": {
+        "agent": 0,
+        "prometheus": 0
+      }
+    }
+  },
+  "alerts": {
+    "status": "success",
+    "data": {
+      "alerts": [
+        {
+          "labels": {
+            "alertname": "LLMCostBurnRateHigh",
+            "severity": "warning"
+          },
+          "annotations": {
+            "description": "Tốc độ chi tiêu hiện tại: $4.12/giờ",
+            "summary": "Chi phí LLM đang vượt $2/giờ"
+          },
+          "state": "firing",
+          "activeAt": "2026-11-25T13:02:27.571501534Z",
+          "value": "4.122199998229625e+00"
+        }
+      ]
+    }
+  }
+}

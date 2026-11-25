@@ -651,7 +651,7 @@ docker compose -p k5-day14-scaling -f 05-scaling-reliability/production/docker-c
 
 **Kết quả xác minh:** `PASS 12/12`, `42/42 checks passed`. Báo cáo đầy đủ: [production_ready.txt](06-lab-complete/reports/production_ready.txt), ghi nhận lúc 17:11:39 ngày 25/11/2026 (GMT+7). Các file ứng dụng và cấu hình hiện tại có thời điểm sửa trước lần chấm này.
 
-Chạy nguyên `python check_production_ready.py` trong container Linux qua wrapper `06-lab-complete/reports/run_check_wsl.sh`, có Docker CLI/socket và Compose plugin. Không dùng `--static-only` hoặc `--skip-docker`. Wrapper chỉ chuẩn bị môi trường và ghi log, không đổi tiêu chí chấm.
+Đã chạy nguyên `python check_production_ready.py` trong container Linux, có Docker CLI/socket và Compose plugin. Không dùng `--static-only` hoặc `--skip-docker`. Wrapper WSL chỉ chuẩn bị môi trường, không đổi tiêu chí chấm; helper tạm này không nằm trong bản nộp. Kết quả đầy đủ được giữ trong `06-lab-complete/reports/production_ready.txt`.
 
 ### Các phần đã hoàn thiện
 
@@ -733,7 +733,7 @@ AI gọi public URL ngày 25/11/2026 và ghi nhận `/health` → `200`, `/ready
 
 ## Part 7 — Benchmark local (CP7)
 
-**Trạng thái: hoàn thành CP7.** Báo cáo số đo: [BENCHMARK_REPORT.md](BENCHMARK_REPORT.md), mục 1–3. CP8 còn chờ observability, trace, alert và Locust scaling.
+**Trạng thái: hoàn thành CP7.** Báo cáo số đo: [BENCHMARK_REPORT.md](BENCHMARK_REPORT.md), mục 1–3. CP8 đã hoàn thành phần đo và ảnh ở mục bên dưới.
 
 ### Exercise 7.1 — Metrics
 
@@ -764,7 +764,60 @@ Quality gate (accuracy ≥ 100%, không regression): ✅ PASS
 
 Đủ ba file bắt buộc `eval_v1.json`, `eval_v2.json`, `eval_v2_fixed.json`; có thêm `eval_v1_regression.json` chứng minh chặn downgrade. Server benchmark do AI tạo đã được dừng sau phép đo. CP7 dùng mock LLM, không phát sinh phí nhà cung cấp thật.
 
+## Part 7 — Observability stack và scaling (CP8)
+
+**CP8 hoàn thành.** Báo cáo đầy đủ ở [BENCHMARK_REPORT.md](BENCHMARK_REPORT.md), mục 4–6. Đã đối chiếu đủ bốn ảnh, lưu bằng chứng, trả fault injection về mặc định và dọn riêng stack CP8 bằng `down -v`.
+
+### Exercise 7.4 — Stack và Golden Signals
+
+Đã chạy project `k5-day14-observability` gồm agent, Nginx, Prometheus, Grafana, Jaeger và Locust. Sau benchmark scale 1/3, dùng 2 agent và tải web 30 users / ramp 5 cho observability.
+
+- Baseline p95 **295.59 ms**, avg **242.02 ms**, theo Prometheus histogram/rate trong 1 phút.
+- Hai instance nhận khoảng **9.15** và **9.16 req/s**; phân tải gần đều trong cửa sổ đo.
+- Input **1397.62 tokens/s**, output **729.38 tokens/s** vì prompt gồm system + retrieval + câu hỏi.
+- `/metrics` qua Nginx trả **404**, Prometheus scrape trực tiếp agent nội bộ.
+- Đã sửa Dockerfile thêm `PYTHONUSERBASE` để user non-root tìm đúng packages; kiểm tra UID 999/import Uvicorn và health thành công. Đã đồng bộ KB JWT/HPA từ develop sang production.
+
+### Exercise 7.5 — Tracing
+
+- Trace chậm: `5b759e26f97e23a2b5bc72c6140589ff`, tổng **1770.017 ms**; span LLM **1681.862 ms**, chiếm **95.02%**.
+- Trace lỗi: `f90c08398270acd34187636f0156dc36`, tổng **931.854 ms**, có ERROR và event exception từ lỗi upstream.
+- Cả hai trace có dòng log JSON cùng `trace_id`, đã lưu riêng vào `production/benchmark-results/trace_*`. Report chứa link mở đúng trace và log tương ứng.
+
+### Exercise 7.6 — Alerts
+
+- Unit test alert rules bằng promtool: **SUCCESS**, không sửa test hoặc ngưỡng rule.
+- A: `MOCK_ERROR_RATE=0.2`, alert **AgentHighErrorRate** firing sau **87.4 giây** từ lúc đổi cấu hình.
+- B: tăng `MOCK_SLOW_RATE=0.3`, giữ lỗi từ A; alert **AgentHighLatencyP95** firing sau **160.9 giây**. Snapshot xác nhận hai alert lỗi/latency cùng firing.
+- Poll mỗi 5 giây; thời gian trên bao gồm recreate, DNS và scrape. Alert cost đã firing từ baseline model nhỏ nên không gán cho thí nghiệm đổi model chưa chạy.
+- Thay v1 có thể làm câu trả lời sai nhưng vẫn HTTP 200; cần eval gate và kiểm tra chất lượng định kỳ, không chỉ metric hạ tầng.
+
+### Exercise 7.7 — Benchmark scaling và báo cáo
+
+Hai file bắt buộc đã có ở `06-lab-complete/benchmark-observability/production/benchmark-results/`: `scale_1_stats.csv`, `scale_3_stats.csv`.
+
+| Agent | RPS (Aggregated) | p50 / p95 / p99 (ms) | Failures |
+|---|---:|---|---|
+| 1 | 55.97 | 260 / 1700 / 2400 | 67/6641 |
+| 3 | 64.04 | 210 / 570 / 1700 | 67/7640 |
+
+Locust headless chạy 100 users, ramp 10/s, 2 phút mỗi mức, fault injection mặc định. Dùng `--no-deps` để Compose không tự áp dụng lại replica mặc định khi khởi động Locust. Lượt preflight sai replica không dùng làm số liệu. RPS tăng 14,43%, p95 giảm; tải closed-loop có thời gian nghỉ và slow LLM vẫn giới hạn mức cải thiện.
+
+Đã mở và xác minh bốn ảnh trong `screenshots/`: [Grafana](screenshots/grafana-dashboard.png), [trace chậm](screenshots/jaeger-slow-trace.png), [trace lỗi](screenshots/jaeger-error-trace.png), [hai alert firing](screenshots/prometheus-alert-firing.png). Hai trace đúng ID đã lưu; ảnh lỗi có event exception, ảnh Prometheus thấy hai alert cùng firing.
+
 ## AI log
+
+### Đóng gói và dọn output — Ngày 25/11/2026
+
+- **Đã hỏi:** dọn file thừa, commit và push.
+- **Đã làm:** bỏ helper điều phối tạm, log console lặp, CSV phụ và output preflight sai replica; giữ JSON CP7, metadata/metrics, CSV stats 1/3, snapshot và timeline alert, trace/log cùng ID, ảnh và báo cáo PASS CP5. Cập nhật lệnh tái hiện để không tham chiếu file đã bỏ. Không xóa code mẫu, script chấm hoặc golden dataset.
+
+### CP8 — Ngày 25/11/2026
+
+- **Đã hỏi:** thực hiện CP8, người học tự chụp ảnh.
+- **Đã nhận:** CSV scaling 1/3, Prometheus snapshots/timeline, hai trace và log cùng ID, phân tích báo cáo và hướng dẫn chụp ảnh; sau khi người học chụp, xác minh ảnh và dọn stack.
+- **AI đã kiểm tra:** tái hiện lỗi import packages, sửa đúng Dockerfile và kiểm tra non-root runtime; chạy promtool SUCCESS; đo thật hai lượt Locust 100 users/2 phút, kiểm soát đúng replica sau khi phát hiện Compose tự scale dependency trong preflight. Chạy tải web 30 users; tiêm lỗi/chậm, quan sát hai alert cùng firing. Thu trace Jaeger thật và đối chiếu log JSON. Không sửa test/rule, không tạo ảnh giả; giữ stack để người học chụp ảnh.
+- **Tự sửa và tự kiểm tra của người học:** đã tự chụp đủ bốn ảnh CP8; AI mở từng ảnh, đối chiếu trace/exception và hai alert firing, chuẩn hóa đuôi `.png`. Sau khi ảnh hợp lệ, trả `.env` local về mặc định và thực hiện `docker compose -p k5-day14-observability ... down -v`; giữ nguyên dữ liệu và ảnh đã nộp trong repo.
 
 ### CP7 — Ngày 25/11/2026
 
@@ -783,7 +836,7 @@ Quality gate (accuracy ≥ 100%, không regression): ✅ PASS
 
 - **Đã hỏi:** hoàn thiện CP5, hỗ trợ chạy kiểm tra trên Windows/WSL và xác minh kết quả.
 - **Đã nhận:** triển khai app, Redis rate limit/cost guard, Docker/Compose, env example, Render Blueprint và checklist PASS.
-- **AI đã kiểm tra:** static đạt 27/27 checks; đọc báo cáo đầy đủ của lần chấm Linux đạt 12/12 tiêu chí, 42/42 checks; đối chiếu thời điểm file và SHA256 script chấm. Các lần đầu vướng môi trường Docker CLI/Compose và pull 429; kết quả cuối đã vượt qua build, runtime và Docker stop. Hai test bổ sung trong `tests/test_state_guards.py` chưa được chạy, không tính vào 42 checks của script chấm.
+- **AI đã kiểm tra:** static đạt 27/27 checks; đọc báo cáo đầy đủ của lần chấm Linux đạt 12/12 tiêu chí, 42/42 checks; đối chiếu thời điểm file và SHA256 script chấm. Các lần đầu vướng môi trường Docker CLI/Compose và pull 429; kết quả cuối đã vượt qua build, runtime và Docker stop. Test bổ sung thử nghiệm chưa chạy đã được bỏ khỏi bản nộp, không tính vào 42 checks của script chấm.
 - **Tự sửa và tự kiểm tra của người học:** đã tự chạy lệnh Docker/Compose và wrapper theo trao đổi; cần giải thích được các tiêu chí và giữ bí mật API key khi deploy CP6.
 
 ### CP1 — Ngày 25/11/2026

@@ -1,0 +1,351 @@
+{
+  "captured_at": "2026-11-25T13:06:42.745012+00:00",
+  "queries": {
+    "rps_by_instance": {
+      "expression": "sum by (instance) (rate(http_requests_total{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "instance": "172.20.0.5:8000"
+              },
+              "value": [
+                1795612002.947,
+                "11.654545454545454"
+              ]
+            },
+            {
+              "metric": {
+                "instance": "172.20.0.8:8000"
+              },
+              "value": [
+                1795612002.947,
+                "12.6"
+              ]
+            },
+            {
+              "metric": {
+                "instance": "172.20.0.9:8000"
+              },
+              "value": [
+                1795612002.947,
+                "11.89090909090909"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "p95_seconds": {
+      "expression": "histogram_quantile(0.95,sum by (le)(rate(http_request_duration_seconds_bucket{job=\"agent\",route=\"/ask\"}[1m])))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612002.96,
+                "0.6489583333333319"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "avg_seconds": {
+      "expression": "sum(rate(http_request_duration_seconds_sum{job=\"agent\",route=\"/ask\"}[1m]))/sum(rate(http_request_duration_seconds_count{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612002.983,
+                "0.2666383424336025"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "error_rate": {
+      "expression": "sum(rate(http_requests_total{job=\"agent\",route=\"/ask\",status=~\"5..\"}[1m]))/sum(rate(http_requests_total{job=\"agent\",route=\"/ask\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612002.995,
+                "0.008551307847082494"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "tokens_per_second": {
+      "expression": "sum by (type)(rate(llm_tokens_total{job=\"agent\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "type": "input"
+              },
+              "value": [
+                1795612003.019,
+                "2776.8727272727274"
+              ]
+            },
+            {
+              "metric": {
+                "type": "output"
+              },
+              "value": [
+                1795612003.019,
+                "1449"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "cost_usd_per_hour": {
+      "expression": "sum(rate(llm_cost_usd_total{job=\"agent\"}[5m]))*3600",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612003.056,
+                "5.406256894826767"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "agent_versions": {
+      "expression": "agent_info{job=\"agent\"}",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "__name__": "agent_info",
+                "instance": "172.20.0.5:8000",
+                "job": "agent",
+                "model": "mock-llm-small",
+                "version": "v2"
+              },
+              "value": [
+                1795612003.082,
+                "1"
+              ]
+            },
+            {
+              "metric": {
+                "__name__": "agent_info",
+                "instance": "172.20.0.8:8000",
+                "job": "agent",
+                "model": "mock-llm-small",
+                "version": "v2"
+              },
+              "value": [
+                1795612003.082,
+                "1"
+              ]
+            },
+            {
+              "metric": {
+                "__name__": "agent_info",
+                "instance": "172.20.0.9:8000",
+                "job": "agent",
+                "model": "mock-llm-small",
+                "version": "v2"
+              },
+              "value": [
+                1795612003.082,
+                "1"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "retrieval_per_second": {
+      "expression": "sum(rate(agent_retrieval_total{job=\"agent\"}[1m]))",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {},
+              "value": [
+                1795612003.097,
+                "35.981818181818184"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "targets": {
+    "status": "success",
+    "data": {
+      "activeTargets": [
+        {
+          "discoveredLabels": {
+            "__address__": "172.20.0.5:8000",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__meta_dns_name": "agent",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "agent"
+          },
+          "labels": {
+            "instance": "172.20.0.5:8000",
+            "job": "agent"
+          },
+          "scrapePool": "agent",
+          "scrapeUrl": "http://172.20.0.5:8000/metrics",
+          "globalUrl": "http://172.20.0.5:8000/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:06:40.523670294Z",
+          "lastScrapeDuration": 0.012386201,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "172.20.0.8:8000",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__meta_dns_name": "agent",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "agent"
+          },
+          "labels": {
+            "instance": "172.20.0.8:8000",
+            "job": "agent"
+          },
+          "scrapePool": "agent",
+          "scrapeUrl": "http://172.20.0.8:8000/metrics",
+          "globalUrl": "http://172.20.0.8:8000/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:06:38.2658173Z",
+          "lastScrapeDuration": 0.0058894,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "172.20.0.9:8000",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__meta_dns_name": "agent",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "agent"
+          },
+          "labels": {
+            "instance": "172.20.0.9:8000",
+            "job": "agent"
+          },
+          "scrapePool": "agent",
+          "scrapeUrl": "http://172.20.0.9:8000/metrics",
+          "globalUrl": "http://172.20.0.9:8000/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:06:39.923349306Z",
+          "lastScrapeDuration": 0.006621601,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "localhost:9090",
+            "__always_scrape_classic_histograms__": "false",
+            "__convert_classic_histograms_to_nhcb__": "false",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_native_histograms__": "false",
+            "__scrape_timeout__": "5s",
+            "job": "prometheus"
+          },
+          "labels": {
+            "instance": "localhost:9090",
+            "job": "prometheus"
+          },
+          "scrapePool": "prometheus",
+          "scrapeUrl": "http://localhost:9090/metrics",
+          "globalUrl": "http://a35d0146d1cb:9090/metrics",
+          "lastError": "",
+          "lastScrape": "2026-11-25T13:06:42.690628308Z",
+          "lastScrapeDuration": 0.009657201,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        }
+      ],
+      "droppedTargets": [],
+      "droppedTargetCounts": {
+        "agent": 0,
+        "prometheus": 0
+      }
+    }
+  },
+  "alerts": {
+    "status": "success",
+    "data": {
+      "alerts": [
+        {
+          "labels": {
+            "alertname": "LLMCostBurnRateHigh",
+            "severity": "warning"
+          },
+          "annotations": {
+            "description": "Tốc độ chi tiêu hiện tại: $5.40/giờ",
+            "summary": "Chi phí LLM đang vượt $2/giờ"
+          },
+          "state": "firing",
+          "activeAt": "2026-11-25T13:02:27.571501534Z",
+          "value": "5.399426929441053e+00"
+        }
+      ]
+    }
+  }
+}

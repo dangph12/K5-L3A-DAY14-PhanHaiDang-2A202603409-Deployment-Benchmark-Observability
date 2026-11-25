@@ -1,0 +1,44 @@
+{
+  "captured_at": "2026-11-25T13:12:08.129363+00:00",
+  "slow": {
+    "trace_id": "5b759e26f97e23a2b5bc72c6140589ff",
+    "duration_ms": 1770.017257,
+    "llm_span": "chat mock-llm-small",
+    "llm_ms": 1681.861855,
+    "url": "http://localhost:16686/trace/5b759e26f97e23a2b5bc72c6140589ff",
+    "log": {
+      "ts": "2026-11-25T13:11:42.389236+00:00",
+      "level": "INFO",
+      "service": "observable-agent",
+      "instance": "55864082354f",
+      "event": "llm_call",
+      "trace_id": "5b759e26f97e23a2b5bc72c6140589ff",
+      "span_id": "c3acbcbb9981f363",
+      "request_id": "5dfa769086a4",
+      "model": "mock-llm-small",
+      "agent_version": "v2",
+      "input_tokens": 95,
+      "output_tokens": 55,
+      "cost_usd": 4.7e-05,
+      "llm_ms": 1681.1
+    }
+  },
+  "error": {
+    "trace_id": "f90c08398270acd34187636f0156dc36",
+    "duration_ms": 931.854408,
+    "llm_span": "chat mock-llm-small",
+    "llm_ms": 845.749208,
+    "url": "http://localhost:16686/trace/f90c08398270acd34187636f0156dc36",
+    "log": {
+      "ts": "2026-11-25T13:11:56.979042+00:00",
+      "level": "INFO",
+      "service": "observable-agent",
+      "instance": "b4a70b35d692",
+      "event": "llm_error",
+      "trace_id": "f90c08398270acd34187636f0156dc36",
+      "span_id": "ce428934cc1395af",
+      "request_id": "f60adad7ae43",
+      "error": "Upstream LLM error: 503 Service Unavailable (mock)"
+    }
+  }
+}
