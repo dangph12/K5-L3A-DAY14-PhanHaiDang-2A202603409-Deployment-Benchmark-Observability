@@ -697,7 +697,47 @@ Chạy nguyên `python check_production_ready.py` trong container Linux qua wrap
 
 Script chấm không bị sửa: SHA256 trước và sau là `73E4A70C13BA1127FFD7FAFE14D2B9F6CE6EC016DCCAFD8CA3D416CF8817268A`.
 
+## Part 3 — Cloud Deployment (CP6)
+
+### Exercise 3.2 — Render
+
+Deploy agent Part 6 trong `06-lab-complete/`, không deploy app mẫu Part 3.
+
+- Public URL: https://day14-agent-gm6b.onrender.com
+- Service: `srv-dc3bf00u01pc73e5q6pg`.
+- Deploy thành công theo thông báo của người học: `dep-dc3bgdkipgvc7386rgjg`.
+- Hướng dẫn kiểm tra và bằng chứng: [DEPLOYMENT.md](DEPLOYMENT.md).
+
+AI gọi public URL ngày 25/11/2026 và ghi nhận `/health` → `200`, `/ready` → `200`, `POST /ask` không key → `401`. Người học tự gọi `/ask` có key và nhận `200`. AI đã mở ba ảnh [dashboard](screenshots/dashboard.PNG), [running](screenshots/running.PNG), [test](screenshots/test.PNG), xác nhận service Live, health public hoạt động và đủ bốn mã `200`, `200`, `401`, `200`. Không thấy giá trị API key thật trong ảnh. **CP6 hoàn thành.**
+
+### So sánh railway.toml và render.yaml
+
+| Nội dung | Railway TOML mẫu Part 3 | Render YAML đã dùng ở Part 6 |
+|---|---|---|
+| Cấu trúc | TOML, các bảng `[build]`, `[deploy]` | YAML, danh sách `services` và `envVars` |
+| Build | Mẫu chọn `NIXPACKS` | `runtime: docker`, build Dockerfile trong `06-lab-complete` |
+| Start | Mẫu đặt `startCommand` với `$PORT` | Dùng CMD của Dockerfile, đọc `${PORT:-8000}` |
+| Health | `healthcheckPath = "/health"` | `healthCheckPath: /health` |
+| Secret | Đặt qua dashboard hoặc CLI | `AGENT_API_KEY` dùng `generateValue: true` |
+| Redis | File TOML mẫu không khai báo Redis | Khai báo Key Value và nối `REDIS_URL` qua `fromService` |
+
+### Exercise 3.3 — Mô tả pipeline Cloud Run
+
+Đã đọc `03-cloud-deployment/production-cloud-run/cloudbuild.yaml` và `service.yaml`; không deploy Cloud Run theo CHECKPOINTS.
+
+1. Bước test cài requirements và pytest, chạy bộ test; bước build được khai báo chờ bước test.
+2. Docker build image với tag theo `$COMMIT_SHA` và `latest`, sau đó push lên `gcr.io/$PROJECT_ID/ai-agent`.
+3. Bước deploy dùng gcloud đưa image theo commit lên Cloud Run, vùng `asia-southeast1`, cấu hình public và giới hạn instance.
+4. `service.yaml` mô tả tài nguyên, concurrency, probes `/health` và `/ready`, lấy secret qua `secretKeyRef`; file này có lệnh `gcloud run services replace` riêng, không được pipeline trên tự áp dụng.
+5. Lưu ý code mẫu: script test có `echo` sau pytest nhưng chưa bật `set -e`, nên không bảo đảm test fail sẽ chặn pipeline; trigger push main cũng cần cấu hình bên ngoài YAML.
+
 ## AI log
+
+### CP6 — Ngày 25/11/2026
+
+- **Đã hỏi/thông báo:** người học chọn Render, tự cài CLI, login và thông báo deployment thành công với URL public.
+- **Đã nhận:** hướng dẫn deploy Blueprint/CLI, tài liệu DEPLOYMENT và câu trả lời Part 3.
+- **AI đã kiểm tra:** gọi URL public thực tế, ghi nhận health `200`, readiness `200`, thiếu key `401`; đọc cấu hình Railway, Render và Cloud Run. Sau khi người học bổ sung ảnh, mở cả `dashboard.PNG`, `running.PNG`, `test.PNG`, đối chiếu trạng thái Live và bốn HTTP status, gồm request có key `200` do người học chạy. Đã cập nhật DEPLOYMENT và đánh dấu CP6 hoàn thành, không ghi key thật.
 
 ### CP5 — Ngày 25/11/2026
 
