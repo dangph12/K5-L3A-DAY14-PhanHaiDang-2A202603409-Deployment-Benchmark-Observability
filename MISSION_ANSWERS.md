@@ -329,6 +329,174 @@ docker compose -p k5-day14-docker -f 02-docker/production/docker-compose.yml dow
 - [x] Đo kích thước hai image, tính phần trăm chênh lệch.
 - [x] Chạy Compose, dán kết quả test qua Nginx.
 
+## Part 4 — API Security (CP3)
+
+**Trạng thái:** hoàn thành phần đọc code và chạy ví dụ theo CP3. Không viết lại code mẫu. Kết quả dưới đây lấy từ `curl.exe -sS -i` ngày 25/11/2026.
+
+### Exercise 4.1 — API Key authentication
+
+- **Kiểm tra key ở đâu:** `verify_api_key()` trong `04-api-gateway/develop/app.py` đọc header `X-API-Key` qua `APIKeyHeader(auto_error=False)`. Endpoint `/ask` yêu cầu dependency `Depends(verify_api_key)`.
+- **Không gửi key:** trả `401 Unauthorized`.
+- **Gửi sai key:** trả `403 Forbidden`, không phải `401` trong code mẫu này.
+- **Gửi đúng key:** được xử lý câu hỏi, trả `200` nếu request hợp lệ.
+- **Rotate key:** thay biến môi trường `AGENT_API_KEY`, khởi động lại hoặc redeploy server vì biến được đọc lúc import, rồi cập nhật client. Code mẫu chỉ hỗ trợ một key nên không có giai đoạn đồng thời chấp nhận key cũ và mới.
+- `/` và `/health` là public endpoint. Khi chạy trực tiếp `python app.py`, code mẫu in key ra terminal; không dùng cách log đó cho secret thật. Phiên kiểm tra dùng key demo tạm qua env và chạy Uvicorn trực tiếp.
+
+**Output curl thực tế — không gửi key:**
+
+```text
+HTTP/1.1 401 Unauthorized
+date: Wed, 25 Nov 2026 09:02:58 GMT
+server: uvicorn
+content-length: 67
+content-type: application/json
+
+{"detail":"Missing API key. Include header: X-API-Key: <your-key>"}
+```
+
+**Output curl thực tế — sai key:**
+
+```text
+HTTP/1.1 403 Forbidden
+date: Wed, 25 Nov 2026 09:02:58 GMT
+server: uvicorn
+content-length: 29
+content-type: application/json
+
+{"detail":"Invalid API key."}
+```
+
+**Output curl thực tế — đúng key (key không ghi vào báo cáo):**
+
+```text
+HTTP/1.1 200 OK
+date: Wed, 25 Nov 2026 09:02:58 GMT
+server: uvicorn
+content-length: 122
+content-type: application/json
+
+{"question":"Hello","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận."}
+```
+
+### Exercise 4.2 — JWT authentication
+
+Luồng thực tế trong `production/auth.py` và `production/app.py`:
+
+1. Client gửi `POST /auth/token` với tài khoản demo `student` / `demo123`.
+2. `authenticate_user()` kiểm tra tài khoản; `create_token()` ký JWT bằng HS256 và `JWT_SECRET`.
+3. Token có `sub` (username), `role`, `iat` và `exp`; thời hạn 60 phút.
+4. Client gửi `Authorization: Bearer <token>` khi gọi `POST /ask`.
+5. `verify_token()` xác minh chữ ký và thời hạn. Thiếu token hoặc token hết hạn trả `401`; token không hợp lệ trả `403` theo code mẫu.
+
+Đúng endpoint là `/auth/token`, không phải `/token`. Tài khoản demo là `student` / `demo123`, không phải `admin` / `secret` trong ví dụ cũ của CODE_LAB.
+
+**Kết quả lấy token thực tế:** HTTP `200`, `token_type` là `bearer`, `expires_in_minutes` là `60`. Token đã được giữ trong bộ nhớ để chạy vòng lặp và không ghi vào báo cáo.
+
+**Output curl thực tế — request đầu dùng JWT:**
+
+```text
+HTTP/1.1 200 OK
+date: Wed, 25 Nov 2026 09:03:00 GMT
+server: uvicorn
+content-length: 187
+content-type: application/json
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+
+{"question":"Test 1","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận.","usage":{"requests_remaining":9,"budget_remaining_usd":1.9e-05}}
+```
+
+Lưu ý khi đọc response: `budget_remaining_usd` trong `/ask` đang được gán bằng `usage.total_cost_usd`, tức chi phí đã dùng, không phải ngân sách còn lại. Đây là hạn chế của code mẫu; `/me/usage` mới tính phần ngân sách còn lại bằng phép trừ.
+
+### Exercise 4.3 — Rate limiting
+
+- **Thuật toán:** sliding window dựa trên deque timestamp cho từng username. Mỗi lần kiểm tra, loại timestamp cũ hơn 60 giây, kiểm tra số request còn trong cửa sổ rồi ghi timestamp mới. Đây là cách lưu log request trong cửa sổ trượt, dù docstring gọi là Sliding Window Counter; không phải token bucket.
+- **Giới hạn user:** 10 request trong 60 giây, cấu hình bởi `rate_limiter_user`.
+- **Giới hạn admin:** 100 request trong 60 giây, cấu hình bởi `rate_limiter_admin`. Tài khoản `teacher` / `teach456` có role admin.
+- **Admin có bypass không:** code hiện tại chỉ tăng giới hạn, không bỏ qua hoàn toàn. Muốn miễn giới hạn phải thêm nhánh bỏ kiểm tra limiter cho role admin ở server; client không tự thay role trong JWT vì chữ ký sẽ không hợp lệ.
+- Khi vượt giới hạn, server trả `429` kèm `Retry-After` và các header `X-RateLimit-*`.
+- Limiter lưu trong RAM của tiến trình; không chia sẻ giữa worker hoặc instance. Khi triển khai nhiều instance cần kho state chung, ví dụ Redis.
+
+**Vòng lặp thực tế:** lấy một token student mới rồi gọi `/ask` 20 lần liên tiếp bằng curl; không gọi `/ask` trước vòng lặp trên server production mới khởi động.
+
+```text
+Request 01–10: HTTP/1.1 200 OK
+Request 11–20: HTTP/1.1 429 Too Many Requests
+```
+
+**Output curl thực tế — request thứ 11:**
+
+```text
+HTTP/1.1 429 Too Many Requests
+date: Wed, 25 Nov 2026 09:03:02 GMT
+server: uvicorn
+x-ratelimit-limit: 10
+x-ratelimit-remaining: 0
+x-ratelimit-reset: 1795597442
+retry-after: 59
+content-length: 98
+content-type: application/json
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+```
+
+Lệnh PowerShell để người học tự chạy lại từ gốc repo. Chạy server trong terminal riêng và giữ terminal đó mở:
+
+```powershell
+& .\.venv\Scripts\python.exe -m uvicorn app:app --app-dir 04-api-gateway/production --host 127.0.0.1 --port 18004
+```
+
+Terminal khác lấy token và tạo vòng lặp; không in token ra màn hình:
+
+```powershell
+$loginBody = '{"username":"student","password":"demo123"}'
+$login = $loginBody | curl.exe -sS -X POST "http://127.0.0.1:18004/auth/token" -H "Content-Type: application/json" --data-binary '@-'
+$cp3Token = ($login | ConvertFrom-Json).access_token
+1..20 | ForEach-Object {
+    "Request $_"
+    $body = @{ question = "Test $_" } | ConvertTo-Json -Compress
+    $body | curl.exe -sS -i -X POST "http://127.0.0.1:18004/ask" -H "Authorization: Bearer $cp3Token" -H "Content-Type: application/json" --data-binary '@-'
+}
+Remove-Variable cp3Token, login
+```
+
+### Exercise 4.4 — Cost guard
+
+Code mẫu `production/cost_guard.py` đã có logic minh họa:
+
+1. `check_budget(username)` chạy trước khi gọi mock LLM, kiểm tra chi phí đã tích lũy.
+2. Ngân sách mặc định là **1 USD/ngày/user**, **10 USD tổng toàn hệ thống**; cảnh báo khi user dùng từ 80% ngân sách.
+3. Hết ngân sách user trả `402`; hết ngân sách tổng trả `503`.
+4. Sau khi có response, `record_usage()` cộng input/output token và chi phí. App ước lượng số token bằng số từ nhân 2, không lấy usage từ nhà cung cấp thật.
+5. Chi phí được tính theo hằng số giá trong file: `input_tokens / 1000 × PRICE_PER_1K_INPUT_TOKENS + output_tokens / 1000 × PRICE_PER_1K_OUTPUT_TOKENS`. Đây là giá minh họa trong repo, không phải xác nhận giá hiện hành của nhà cung cấp.
+
+**Khác với yêu cầu ví dụ 10 USD/tháng:** code mẫu dùng ngân sách ngày và RAM, chưa dùng Redis. Theo CHECKPOINTS, CP3 chạy ví dụ có sẵn và giải thích, không viết lại code mẫu.
+
+Để làm cost guard **10 USD/tháng/user bằng Redis**, dùng key `budget:{user_id}:{YYYY-MM}`. Trước khi gọi LLM, so sánh `chi_phi_da_dung + chi_phi_uoc_luong` với 10 USD. Nếu vượt thì từ chối; nếu đủ thì dự trữ chi phí bằng thao tác atomic, ví dụ Lua script kiểm tra và tăng trong cùng lần thực thi. Sau request, đối soát usage thật và hoàn trả phần dự trữ dư. Sang tháng dùng key mới; TTL dọn key cũ. Không tách GET rồi INCR thành hai thao tác độc lập vì các request đồng thời có thể cùng vượt budget.
+
+**Hạn chế nhận thấy trong code mẫu:**
+
+- Guard kiểm tra tổng đã dùng, chưa tính chi phí request sắp chạy nên một request vẫn có thể làm vượt trần.
+- State RAM mất khi restart và không chia sẻ giữa instance.
+- Record user tạo lại khi đổi ngày theo timezone hệ thống. `_global_today` được khởi tạo nhưng không dùng để reset `_global_cost`, nên ngân sách tổng chưa tự reset theo ngày như tên biến mô tả.
+- Trường `resets_at` ghi midnight UTC nhưng code dùng `time.strftime()` theo timezone hệ thống; chưa bảo đảm UTC nếu host dùng timezone khác.
+
+**Vì sao cần cả rate limit và cost guard:** rate limit kiểm soát tốc độ gọi, giúp bảo vệ tài nguyên và độ ổn định. Cost guard giới hạn chi phí tích lũy. Request ít nhưng dài vẫn có thể tốn nhiều tiền; request rẻ nhưng quá dồn dập vẫn có thể gây quá tải.
+
+### Tự kiểm tra CP3
+
+- [x] Giải thích vị trí kiểm tra API key, lỗi thiếu/sai key và cách rotate key.
+- [x] Chạy develop, ghi output curl `401`, `403`, `200`.
+- [x] Lấy JWT tại `/auth/token`, dùng token gọi API thành công và không ghi token thật vào báo cáo.
+- [x] Chạy vòng lặp 20 curl, quan sát `429` thực tế.
+- [x] Giải thích thuật toán, giới hạn theo role, cost guard và hạn chế state RAM.
+
 ## AI log
 
 ### CP1 — Ngày 25/11/2026
@@ -341,6 +509,10 @@ docker compose -p k5-day14-docker -f 02-docker/production/docker-compose.yml dow
 
 - **Đã hỏi:** điền CP2 vào báo cáo; người học tự chạy Docker.
 - **Đã nhận:** 4 đáp án Dockerfile, giải thích multi-stage/cache, sơ đồ stack, lệnh PowerShell và các ô chờ bằng chứng thực tế.
-- **AI đã kiểm tra:** đọc code và cấu hình; sau khi người học chạy Docker, đọc `docker images`, `docker image inspect`, `docker ps -a`; gọi lại develop và Nginx, xác nhận cả bốn request trả `200`; tính mức giảm 85,62% từ kích thước byte thực tế. Không build hoặc dừng container trong lần kiểm tra này.
-- **Tự sửa và tự kiểm tra của người học:** đã chạy Docker, bổ sung output develop, kích thước image và response qua Nginx vào báo cáo; thông báo đã chạy xong để kiểm tra lại.
-- **Cập nhật sơ đồ:** theo yêu cầu người học, AI thay liên kết draw.io bằng sơ đồ Mermaid trực tiếp trong Exercise 2.4, đối chiếu với Compose và luồng xử lý đã đọc trong `main.py`.
+- **AI đã kiểm tra:** đọc code và cấu hình; sau khi người học chạy Docker, đọc `docker images`, `docker image inspect`, `docker ps -a`; gọi lại develop và Nginx, xác nhận cả bốn request trả `200`; tính mức giảm 85,62% từ kích thước byte thực tế.
+
+### CP3 — Ngày 25/11/2026
+
+- **Đã hỏi:** thực hiện CP3 theo CHECKPOINTS.
+- **Đã nhận:** câu trả lời Exercise 4.1–4.4, bằng chứng curl, giải thích rate limit/cost guard và lệnh tự chạy lại.
+- **AI đã kiểm tra:** đọc code API key, JWT, rate limiter, cost guard; cài requirements production vào `.venv` (bổ sung PyJWT); chạy develop tại 18003 và production tại 18004; dùng key và JWT secret demo tạm qua env. Curl ghi nhận thiếu key `401`, sai key `403`, đúng key `200`, lấy JWT `200`; vòng lặp 20 request có 10 response `200` và 10 response `429`. Đã dừng hai server sau kiểm tra, không sửa code mẫu.
