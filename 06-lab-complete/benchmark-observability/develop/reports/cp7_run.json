@@ -1,0 +1,25 @@
+{
+  "started_at": "2026-11-25T12:31:06.208033+00:00",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "python": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+  "processor": "Intel64 Family 6 Model 158 Stepping 9, GenuineIntel",
+  "logical_cpus": 8,
+  "dataset_sha256": "22e672344ef72779959f3cf480391cef247b2f8ce86415010ddea9b315e959ec",
+  "kb_before_sha256": "e006f6588fb077b3492f6ef0aec0daaa8692e198ad6ed16e8ff290d72a499996",
+  "load_environment": {
+    "MOCK_ERROR_RATE": 0.01,
+    "MOCK_LATENCY_MS": 120,
+    "MOCK_JITTER_MS": 60,
+    "MOCK_RETRIEVAL_MS": 20,
+    "MOCK_SLOW_MS": 1500
+  },
+  "eval_environment": {
+    "MOCK_ERROR_RATE": 0,
+    "MOCK_SLOW_RATE": 0
+  },
+  "finished_at": "2026-11-25T12:34:58.160075+00:00",
+  "kb_after_sha256": "be53c45e11be1556e758b934a4a0a15ac80221d5638973f93a53ead18e66d984",
+  "cpu_name": "Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz",
+  "physical_cores": 4,
+  "memory_bytes": 25614184448
+}

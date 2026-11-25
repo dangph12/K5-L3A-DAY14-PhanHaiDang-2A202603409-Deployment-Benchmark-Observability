@@ -1,0 +1,49 @@
+
+🧪 Eval agent tại http://localhost:8001
+
+  ✅ basic-01         score=1.00   2204.1ms
+  ❌ docker-01        score=0.33    138.0ms
+  ❌ docker-02        score=0.00    186.4ms
+  ❌ probe-01         score=0.00    185.0ms
+  ❌ probe-02         score=0.00    156.3ms
+  ❌ reliability-01   score=0.00    188.8ms
+  ❌ config-01        score=0.00    158.2ms
+  ❌ security-01      score=0.00    171.2ms
+  ❌ security-02      score=0.00    171.1ms
+  ❌ scaling-01       score=0.00    140.7ms
+  ❌ scaling-02       score=0.00    188.9ms
+  ❌ scaling-03       score=0.00    141.3ms
+  ❌ bench-01         score=0.00    188.1ms
+  ❌ bench-02         score=0.00    171.9ms
+  ❌ obs-01           score=0.00    158.2ms
+  ❌ obs-02           score=0.00    158.6ms
+  ❌ obs-03           score=0.00    174.8ms
+  ❌ obs-04           score=0.00    175.3ms
+  ❌ obs-05           score=0.00    188.1ms
+  ❌ obs-06           score=0.00    190.4ms
+  ❌ slo-01           score=0.00    175.1ms
+  ❌ cost-01          score=0.00    158.8ms
+  ❌ cloud-01         score=0.00    140.8ms
+
+══════════════════════════════════════════════════════════
+  EVAL REPORT — agent v1
+══════════════════════════════════════════════════════════
+  Accuracy      : 4.3%  (1/23)
+  Errors        : 0
+  Latency (ms)  : p50=171.9  p95=190.2
+  Avg tokens    : 57.3
+  Total cost    : $0.000406   (cost / câu đúng: $0.00040635)
+  Theo category :
+    - benchmark      0/3  (0%)
+    - cost           0/1  (0%)
+    - deployment     1/3  (33%)
+    - docker         0/2  (0%)
+    - observability  0/6  (0%)
+    - reliability    0/3  (0%)
+    - scaling        0/3  (0%)
+    - security       0/2  (0%)
+──────────────────────────────────────────────────────────
+  Quality gate (accuracy ≥ 80%, không regression): ❌ FAIL
+══════════════════════════════════════════════════════════
+
+💾 Đã lưu report: reports/eval_v1.json

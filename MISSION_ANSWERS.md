@@ -731,7 +731,47 @@ AI gọi public URL ngày 25/11/2026 và ghi nhận `/health` → `200`, `/ready
 4. `service.yaml` mô tả tài nguyên, concurrency, probes `/health` và `/ready`, lấy secret qua `secretKeyRef`; file này có lệnh `gcloud run services replace` riêng, không được pipeline trên tự áp dụng.
 5. Lưu ý code mẫu: script test có `echo` sau pytest nhưng chưa bật `set -e`, nên không bảo đảm test fail sẽ chặn pipeline; trigger push main cũng cần cấu hình bên ngoài YAML.
 
+## Part 7 — Benchmark local (CP7)
+
+**Trạng thái: hoàn thành CP7.** Báo cáo số đo: [BENCHMARK_REPORT.md](BENCHMARK_REPORT.md), mục 1–3. CP8 còn chờ observability, trace, alert và Locust scaling.
+
+### Exercise 7.1 — Metrics
+
+Đã chạy agent v1 tại 8001, v2 tại 8002, bổ sung Histogram `agent_question_length_chars` trong agent develop. Snapshot [metrics_v2_fixed.txt](06-lab-complete/benchmark-observability/develop/reports/metrics_v2_fixed.txt) có Counter `http_requests_total`, Gauge `agent_in_flight_requests`, Histogram độ dài với count 23 và sum 1066 ký tự. Dùng route template và `unmatched` để tránh cardinality tăng theo URL bot quét.
+
+### Exercise 7.2 — Load test và SLO
+
+Đã lưu đủ 7 file load test, mỗi file 300 request, trong `06-lab-complete/benchmark-observability/develop/reports/`:
+
+- `load_v2_c1.json`, `load_v2_c10.json`, `load_v2_c50.json`, `load_v2_c100.json`.
+- `load_v2_slow_0.json`, `load_v2_slow_0.03.json`, `load_v2_slow_0.1.json`.
+
+Concurrency 1/10 PASS SLO; 50/100 FAIL p95. Ba lượt tail ở concurrency 20 đều FAIL p95; giữ nguyên file và số đo, không nâng ngưỡng để đạt PASS. RPS không tăng tuyến tính; p95/p99 phản ánh tail rõ hơn average. Bảng chi tiết và giới hạn suy luận nằm trong BENCHMARK_REPORT.
+
+### Exercise 7.3 — Eval và quality gate
+
+- V1: **1/23**, accuracy 4.35%, default gate FAIL.
+- V2 ban đầu: **21/23**, accuracy 91.30%, không regression so với v1.
+- Sửa đúng `KNOWLEDGE_BASE` trong develop: bổ sung JWT/API key và Kubernetes HPA; không sửa golden dataset.
+- Khởi động lại v2, eval cuối `--min-accuracy 1.0 --baseline reports/eval_v2.json`: **23/23**, 0 regression, exit code **0**.
+- Thử downgrade v1 với baseline v2: **20 regression**, exit code **1**. BENCHMARK_REPORT giải thích dùng exit code này làm CI gate, ngưỡng 85% và required check để chặn merge.
+
+Output cuối:
+
+```text
+Quality gate (accuracy ≥ 100%, không regression): ✅ PASS
+```
+
+Đủ ba file bắt buộc `eval_v1.json`, `eval_v2.json`, `eval_v2_fixed.json`; có thêm `eval_v1_regression.json` chứng minh chặn downgrade. Server benchmark do AI tạo đã được dừng sau phép đo. CP7 dùng mock LLM, không phát sinh phí nhà cung cấp thật.
+
 ## AI log
+
+### CP7 — Ngày 25/11/2026
+
+- **Đã hỏi:** tiếp tục CP7.
+- **Đã nhận:** 7 load report JSON, 3 eval report bắt buộc và một report thử regression; bổ sung KB và Histogram độ dài câu hỏi; snapshot metrics, metadata, log và báo cáo benchmark ở gốc repo.
+- **AI đã kiểm tra:** chạy load và eval thật bằng Python trong `.venv`, không gọi URL cloud. Load giữ error rate mặc định; eval tắt fault injection và công bố rõ môi trường. Eval cuối đúng 23/23, không regression; golden dataset giữ nguyên hash. Những lượt load FAIL vẫn được giữ nguyên trong báo cáo. Không sửa script load/eval hoặc đáp án chấm.
+- **Tự sửa và tự kiểm tra của người học:** chưa ghi nhận riêng cho CP7; cần đọc kết quả, giải thích SLO/quality gate và kiểm tra lại khi chạy trên môi trường khác.
 
 ### CP6 — Ngày 25/11/2026
 
