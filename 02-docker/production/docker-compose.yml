@@ -11,9 +11,6 @@
 # Test:  curl http://localhost/health
 # Stop:  docker compose down
 # ============================================================
-
-version: "3.9"
-
 services:
 
   # ──────────────────────────────────────
