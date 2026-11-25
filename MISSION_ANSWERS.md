@@ -497,6 +497,156 @@ Code mẫu `production/cost_guard.py` đã có logic minh họa:
 - [x] Chạy vòng lặp 20 curl, quan sát `429` thực tế.
 - [x] Giải thích thuật toán, giới hạn theo role, cost guard và hạn chế state RAM.
 
+## Part 5 — Scaling & Reliability (CP4)
+
+### Exercise 5.1 — Health checks
+
+| Endpoint | Ý nghĩa | Hành vi code mẫu |
+|---|---|---|
+| `/health` | Liveness: process còn phản hồi được không? | Develop trả trạng thái, uptime và memory check. Production kèm trạng thái Redis, vẫn HTTP `200` khi Redis lỗi nhưng body có thể là `degraded`. |
+| `/ready` | Readiness: có sẵn sàng nhận traffic không? | Develop kiểm `_is_ready`; production ping Redis khi đang dùng Redis. Chưa sẵn sàng hoặc ping thất bại trả `503`. |
+
+Redis chết không đồng nghĩa process agent chết. Liveness có thể vẫn `200`; readiness cần `503` để tránh chuyển traffic vào instance thiếu dependency. Restart hàng loạt agent không khắc phục được Redis chết.
+
+**Develop — output thực tế trong container Linux tạm, cổng 18005:**
+
+```text
+GET /health
+HTTP 200
+{"status":"ok","uptime_seconds":0.3,"version":"1.0.0","environment":"development","timestamp":"2026-11-25T09:16:04.375196+00:00","checks":{"memory":{"status":"ok","note":"psutil not installed"}}}
+
+GET /ready
+HTTP 200
+{"ready":true,"in_flight_requests":1}
+```
+
+Counter bằng 1 vì middleware đếm cả request `/ready` đang xử lý.
+
+**Production — output thực tế qua Nginx cổng 8080, rút gọn header:**
+
+```text
+GET /health
+HTTP/1.1 200 OK
+X-Served-By: 172.18.0.3:8000
+{"status":"ok","instance_id":"instance-f4fe0a","uptime_seconds":45.8,"storage":"redis","redis_connected":true}
+
+GET /ready
+HTTP/1.1 200 OK
+X-Served-By: 172.18.0.5:8000
+{"ready":true,"instance":"instance-3956d9"}
+```
+
+Hai request đến hai instance khác nhau. Trường hợp Redis lỗi trả `503` được giải thích từ code; phiên này chưa thử tắt Redis.
+
+### Exercise 5.2 — Graceful shutdown
+
+Develop dùng middleware `track_requests` đếm request đang xử lý. `lifespan` đặt `_is_ready=True` sau startup, đặt false khi shutdown và có vòng chờ tối đa 30 giây. `uvicorn.run(..., timeout_graceful_shutdown=30)` quản lý dừng server; `handle_sigterm` chỉ ghi log.
+
+**Kiểm tra thực tế:** mount code develop read-only vào container Linux tạm, dùng image `my-agent:develop` cung cấp Python/dependencies. Chạy `python /demo/app.py`, gửi `POST /ask?question=Long%20task`, chờ 0,5 giây rồi gửi SIGTERM bằng `docker stop --time 35`. Mock LLM chờ khoảng 3 giây, nên request đang chạy lúc gửi lệnh stop.
+
+**Output thực tế, trích các dòng liên quan:**
+
+```text
+SEND SIGTERM via docker stop
+IN-FLIGHT REQUEST 200 {"answer":"Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé."}
+INFO:     Started server process [1]
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-11-25 09:17:34,514 INFO 🔄 Graceful shutdown initiated...
+2026-11-25 09:17:34,515 INFO ✅ Shutdown complete
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1]
+EXIT 0
+```
+
+Kết luận: request không bị cắt, trả `200`; tiến trình shutdown hoàn tất và thoát `0`. Container tạm đã được xóa. Không dùng Python Windows `terminate()` để chứng minh SIGTERM.
+
+**Giới hạn:** Uvicorn có thể ngừng nhận kết nối và chờ request trước bước lifespan shutdown. Không suy ra `/ready` đổi false ngay khi SIGTERM đến; phiên này chưa đo readiness trong lúc shutdown.
+
+**Lần thử trước:** chạy qua CLI `python -m uvicorn app:app --app-dir /demo` vẫn trả request `200` nhưng container thoát `137` sau timeout. Lần đó không được tính là graceful shutdown thành công. Chạy lại bằng entrypoint `python app.py` đúng hướng dẫn cho kết quả thành công ở trên. Chưa kết luận nguyên nhân lần CLI và không sửa code mẫu.
+
+### Exercise 5.3 — Stateless design
+
+State trong dictionary RAM chỉ thuộc một process. Request đầu đến instance A, request tiếp theo đến B sẽ không thấy cùng lịch sử. Restart process cũng làm mất state RAM.
+
+Production lưu state trong Redis:
+
+- `load_session()` đọc key `session:{session_id}`.
+- `save_session()` lưu JSON bằng `SETEX`, TTL 3.600 giây và làm mới TTL mỗi lần lưu.
+- `append_to_history()` giữ tối đa 20 message, tương đương 10 lượt hỏi/đáp thông thường.
+- Client gửi lại cùng `session_id`; mọi instance đọc cùng Redis nên không cần sticky session.
+
+Stateless ở đây nghĩa là agent không phụ thuộc state hội thoại riêng trong RAM, không có nghĩa cả hệ thống không có state. Mock LLM hiện chỉ dùng câu hỏi hiện tại, chưa dùng history làm context.
+
+**Hạn chế code mẫu:** nếu Redis không khả dụng lúc import, app fallback về RAM và `/ready` vẫn có thể `200`; phải đối chiếu `storage: redis` khi chứng minh scale. Thao tác đọc–sửa–ghi JSON không atomic, có thể mất cập nhật khi cùng session nhận request đồng thời. Bài test tuần tự chưa kiểm tra tình huống đó.
+
+Compose không mount persistent volume cho Redis. State được chia sẻ khi Redis đang chạy, nhưng không bảo đảm giữ dữ liệu khi Redis bị xóa hoặc gặp sự cố.
+
+### Exercise 5.4 — Load balancing
+
+```powershell
+docker compose -p k5-day14-scaling -f 05-scaling-reliability/production/docker-compose.yml up -d --build --scale agent=3
+docker compose -p k5-day14-scaling -f 05-scaling-reliability/production/docker-compose.yml ps
+```
+
+**Trạng thái thực tế trước khi dọn stack, rút gọn:**
+
+```text
+NAME                         SERVICE   STATUS
+k5-day14-scaling-agent-1      agent     Up (healthy)
+k5-day14-scaling-agent-2      agent     Up (healthy)
+k5-day14-scaling-agent-3      agent     Up (healthy)
+k5-day14-scaling-redis-1      redis     Up (healthy)
+k5-day14-scaling-nginx-1      nginx     Up; host 8080 maps to container 80
+```
+
+Nginx nhận request ở `localhost:8080`, phân phối đến upstream `agent:8000` theo round-robin mặc định. Docker DNS phân giải tên service thành các địa chỉ instance. Header `X-Served-By` cho biết địa chỉ upstream; response `/chat` có `served_by` để nhận diện instance.
+
+Cấu hình có `proxy_next_upstream error timeout http_503` và tối đa 3 lần thử. Không khẳng định mọi POST sẽ được retry an toàn: còn phụ thuộc trạng thái request và quy tắc cho phương thức không idempotent. Phiên này không chủ động kill agent để kiểm tra failover.
+
+### Exercise 5.5 — Test stateless
+
+Đã chạy script gốc:
+
+```powershell
+$env:PYTHONIOENCODING = 'utf-8'
+& .\.venv\Scripts\python.exe 05-scaling-reliability/production/test_stateless.py
+```
+
+**Kết quả thực tế, rút gọn phần câu trả lời:**
+
+```text
+Session ID: 017de5b7-3f18-41a4-a148-0026d07f5315
+Request 1: [instance-f4fe0a]
+Request 2: [instance-3956d9]
+Request 3: [instance-4cafb5]
+Request 4: [instance-f4fe0a]
+Request 5: [instance-3956d9]
+Total requests: 5
+Instances used: {'instance-f4fe0a', 'instance-3956d9', 'instance-4cafb5'}
+✅ All requests served despite different instances!
+Total messages: 10
+✅ Session history preserved across all instances via Redis!
+```
+
+5 câu hỏi cùng một session chạy trên đủ 3 instance. History có 10 message, gồm 5 user và 5 assistant, đúng số mong đợi. Redis giúp các instance đọc/ghi cùng lịch sử.
+
+Script không kill ngẫu nhiên instance, cũng không tự assert `count == 10`; đã đối chiếu output có đủ 10 message. Không dùng mô tả cũ trong CODE_LAB làm bằng chứng failover.
+
+Lệnh dọn riêng project CP4 sau khi lấy bằng chứng, theo CHECKPOINTS:
+
+```powershell
+docker compose -p k5-day14-scaling -f 05-scaling-reliability/production/docker-compose.yml down
+```
+
+### Tự kiểm tra CP4
+
+- [x] Giải thích và gọi health/readiness thực tế.
+- [x] Kiểm tra graceful shutdown trong Linux bằng entrypoint hướng dẫn: request `200`, shutdown hoàn tất, exit `0`.
+- [x] Giải thích state RAM, Redis session và giới hạn code mẫu.
+- [x] Build stack riêng với 3 agent healthy.
+- [x] Chạy test stateless: 3 instance, history đủ 10 message.
+
 ## AI log
 
 ### CP1 — Ngày 25/11/2026
@@ -516,3 +666,9 @@ Code mẫu `production/cost_guard.py` đã có logic minh họa:
 - **Đã hỏi:** thực hiện CP3 theo CHECKPOINTS.
 - **Đã nhận:** câu trả lời Exercise 4.1–4.4, bằng chứng curl, giải thích rate limit/cost guard và lệnh tự chạy lại.
 - **AI đã kiểm tra:** đọc code API key, JWT, rate limiter, cost guard; cài requirements production vào `.venv` (bổ sung PyJWT); chạy develop tại 18003 và production tại 18004; dùng key và JWT secret demo tạm qua env. Curl ghi nhận thiếu key `401`, sai key `403`, đúng key `200`, lấy JWT `200`; vòng lặp 20 request có 10 response `200` và 10 response `429`. Đã dừng hai server sau kiểm tra, không sửa code mẫu.
+
+### CP4 — Ngày 25/11/2026
+
+- **Đã hỏi:** thực hiện CP4 sau khi trao đổi về cách lưu state.
+- **Đã nhận:** đáp án Exercise 5.1–5.5 và bằng chứng thực tế health/readiness, graceful shutdown, phân tải và session Redis.
+- **AI đã kiểm tra:** đọc code; tạo `.env.local` trống; build/chạy project `k5-day14-scaling` với 3 agent; chạy script gốc, đối chiếu 5 request/10 message. Dùng container Linux tạm để gửi SIGTERM; ghi cả lần CLI exit `137` và lần `python app.py` thành công exit `0`. Không sửa code mẫu.
