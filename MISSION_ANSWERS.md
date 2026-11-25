@@ -647,7 +647,64 @@ docker compose -p k5-day14-scaling -f 05-scaling-reliability/production/docker-c
 - [x] Build stack riêng với 3 agent healthy.
 - [x] Chạy test stateless: 3 instance, history đủ 10 message.
 
+## Part 6 — Final Project (CP5)
+
+**Kết quả xác minh:** `PASS 12/12`, `42/42 checks passed`. Báo cáo đầy đủ: [production_ready.txt](06-lab-complete/reports/production_ready.txt), ghi nhận lúc 17:11:39 ngày 25/11/2026 (GMT+7). Các file ứng dụng và cấu hình hiện tại có thời điểm sửa trước lần chấm này.
+
+Chạy nguyên `python check_production_ready.py` trong container Linux qua wrapper `06-lab-complete/reports/run_check_wsl.sh`, có Docker CLI/socket và Compose plugin. Không dùng `--static-only` hoặc `--skip-docker`. Wrapper chỉ chuẩn bị môi trường và ghi log, không đổi tiêu chí chấm.
+
+### Các phần đã hoàn thiện
+
+- Config đọc env; xác thực `X-API-Key`, thiếu/sai trả `401`.
+- Redis client không ping lúc import; `/health` luôn `200`, `/ready` trả `503` khi Redis không kết nối được; không fallback state về RAM.
+- Rate limit sliding window theo API key, lưu sorted set Redis và cập nhật bằng Lua atomic; vượt giới hạn trả `429` với `Retry-After`.
+- Budget ngày dùng key theo ngày UTC, dự trữ chi phí bằng Lua atomic trước khi gọi mock LLM và đối soát sau khi trả lời; không đủ budget trả `402`. Token và giá là mô phỏng của lab, không phải hóa đơn LLM thật.
+- Log ứng dụng là JSON, không ghi API key hoặc nội dung câu hỏi. Uvicorn quản lý SIGTERM, lifespan đóng Redis client.
+- Docker multi-stage, base slim, non-root, HEALTHCHECK và PORT từ env; Compose có agent + Redis với volume/AOF.
+- Render Blueprint khai báo web service trong `06-lab-complete/` và Key Value, nối `REDIS_URL` bằng `fromService`, sinh API key bằng `generateValue: true`.
+
+### Bằng chứng đáng chú ý
+
+- Image: **273 MB** theo output script chấm (script chia byte cho 1024²).
+- Rate limit: `429` sau 5 request thành công khi env giới hạn 5/phút; restart agent vẫn `429`.
+- Redis mất kết nối: readiness `503`, liveness vẫn `200`.
+- Budget rất nhỏ: `402` ngay request đầu do chi phí dự trữ vượt ngân sách.
+- SIGTERM lúc có request: request vẫn `200`, process thoát `0`.
+- `docker stop`: exit code `0`, **0,8 giây**.
+
+### Checklist Deliverable — trích nguyên output
+
+```text
+  📋 Checklist Deliverable
+     ✅ Dockerfile (multi-stage, < 500 MB)
+     ✅ docker-compose.yml (agent + redis)
+     ✅ .dockerignore
+     ✅ Health check endpoint (GET /health)
+     ✅ Readiness endpoint (GET /ready)
+     ✅ API Key authentication
+     ✅ Rate limiting
+     ✅ Cost guard
+     ✅ Config từ environment variables
+     ✅ Structured logging
+     ✅ Graceful shutdown
+     ✅ Public URL ready (Railway / Render config)
+----------------------------------------------------------------
+  Result: 12/12 tiêu chí đạt · 42/42 checks passed
+  🎉 PASS 12/12 — PRODUCTION READY! Deploy nào!
+```
+
+`Public URL ready` trong CP5 xác nhận cấu hình deploy, chưa chứng minh agent đã chạy public. URL, Redis cloud và bằng chứng HTTP trên Render thuộc CP6.
+
+Script chấm không bị sửa: SHA256 trước và sau là `73E4A70C13BA1127FFD7FAFE14D2B9F6CE6EC016DCCAFD8CA3D416CF8817268A`.
+
 ## AI log
+
+### CP5 — Ngày 25/11/2026
+
+- **Đã hỏi:** hoàn thiện CP5, hỗ trợ chạy kiểm tra trên Windows/WSL và xác minh kết quả.
+- **Đã nhận:** triển khai app, Redis rate limit/cost guard, Docker/Compose, env example, Render Blueprint và checklist PASS.
+- **AI đã kiểm tra:** static đạt 27/27 checks; đọc báo cáo đầy đủ của lần chấm Linux đạt 12/12 tiêu chí, 42/42 checks; đối chiếu thời điểm file và SHA256 script chấm. Các lần đầu vướng môi trường Docker CLI/Compose và pull 429; kết quả cuối đã vượt qua build, runtime và Docker stop. Hai test bổ sung trong `tests/test_state_guards.py` chưa được chạy, không tính vào 42 checks của script chấm.
+- **Tự sửa và tự kiểm tra của người học:** đã tự chạy lệnh Docker/Compose và wrapper theo trao đổi; cần giải thích được các tiêu chí và giữ bí mật API key khi deploy CP6.
 
 ### CP1 — Ngày 25/11/2026
 
